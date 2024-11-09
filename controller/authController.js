@@ -1,15 +1,16 @@
 const bcrypt = require('bcrypt');
 const User = require('../models/User'); 
 var jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
 let secret = "123qwe"
 
-// Sign-Up function
+
 async function signUp(req, res) {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     try {
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !role) {
             return res.status(400).json({
                 success: false,
                 message: "Please enter all required fields"
@@ -28,21 +29,29 @@ async function signUp(req, res) {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        const userId = uuidv4(); // Generate a UUID for userId
+
         // Create a new user
         const user = await User.create({
+            userId,
             name,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            role
         });
+
+        const token = jwt.sign({ name: user.name, email: user.email }, secret);
 
         return res.status(201).json({
             success: true,
             message: "User registered successfully",
             user: {
-                id: user.id,
+                id: user.userId, 
                 name: user.name,
-                email: user.email
-            }
+                email: user.email,
+                role: user.role
+            },
+            token
         });
 
     } catch (error) {
@@ -53,6 +62,7 @@ async function signUp(req, res) {
         });
     }
 }
+
 
 // Log-In function
 async function logIn(req, res) {
@@ -104,6 +114,8 @@ async function logIn(req, res) {
         });
     }
 }
+
+
 
 // Export the functions
 module.exports = { signUp, logIn };
